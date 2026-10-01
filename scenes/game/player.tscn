@@ -1,9 +1,13 @@
 [gd_scene format=3 uid="uid://d1cg31u6tcgyc"]
 
 [ext_resource type="Script" uid="uid://dq8oyi8f3pu0w" path="res://scripts/game/player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://nbmwe5gk11sk" path="res://scripts/game/skill_trail.gd" id="2_skill_trail"]
 
 [node name="Player" type="Node2D" unique_id=1865711398]
 script = ExtResource("1_player")
+
+[node name="SkillTrail" type="Node2D" parent="."]
+script = ExtResource("2_skill_trail")
 
 [node name="Visual" type="ColorRect" parent="." unique_id=178270185]
 offset_left = -12.0

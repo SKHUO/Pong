@@ -9,6 +9,7 @@ class_name PongPlayer
 @export var skill_cooldown := 0.0
 @export_enum("WASD", "ArrowKeys") var control_scheme: int = 0
 
+@onready var skill_trail: SkillTrail = $SkillTrail
 @onready var visual: ColorRect = $Visual
 
 var playfield_size := Vector2(1280.0, 720.0)
@@ -42,6 +43,8 @@ func configure(world_size: Vector2, side: int, divider_rect: Rect2) -> void:
 func reset_to(center: Vector2) -> void:
 	position = center
 	velocity = Vector2.ZERO
+	if is_instance_valid(skill_trail):
+		skill_trail.clear()
 	clamp_to_playfield()
 
 
@@ -66,6 +69,14 @@ func move(delta: float) -> void:
 		velocity = Vector2.ZERO
 
 	_update_skill_timers(delta)
+	if is_instance_valid(skill_trail):
+		skill_trail.update_trail(
+			delta,
+			is_skill_active(),
+			global_position,
+			body_color,
+			paddle_size
+		)
 
 
 func get_velocity() -> Vector2:
