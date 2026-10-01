@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/character_select/selection_frame.gd" id="1_frame"]
+
+[node name="SelectionFrame" type="Node2D"]
+script = ExtResource("1_frame")
+
+[node name="Rect" type="ReferenceRect" parent="."]
+offset_right = 108.0
+offset_bottom = 108.0
+mouse_filter = 2
+editor_only = false
+border_width = 4.0
+border_color = Color(0.2, 0.55, 1, 1)

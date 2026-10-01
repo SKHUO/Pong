@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://meka7b60ynyn"]
+
+[ext_resource type="Script" uid="uid://bvo4kfusilj04" path="res://scripts/game/game.gd" id="1_game"]
+[ext_resource type="PackedScene" path="res://scenes/shared/background.tscn" id="2_background"]
+[ext_resource type="PackedScene" path="res://scenes/shared/divider.tscn" id="3_divider"]
+[ext_resource type="PackedScene" path="res://scenes/game/player.tscn" id="4_player"]
+[ext_resource type="PackedScene" path="res://scenes/game/ball.tscn" id="5_ball"]
+
+[node name="Pong" type="Node2D" unique_id=381894583]
+script = ExtResource("1_game")
+
+[node name="Background" parent="." unique_id=1368246452 instance=ExtResource("2_background")]
+
+[node name="Divider" parent="." unique_id=1541340246 instance=ExtResource("3_divider")]
+
+[node name="Player1" parent="." unique_id=1733966400 instance=ExtResource("4_player")]
+
+[node name="Player2" parent="." unique_id=1018083852 instance=ExtResource("4_player")]
+control_scheme = 1
+
+[node name="Ball" parent="." unique_id=1358527681 instance=ExtResource("5_ball")]

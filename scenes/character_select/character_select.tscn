@@ -1,0 +1,84 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/character_select/character_select.gd" id="1_select"]
+[ext_resource type="PackedScene" path="res://scenes/shared/background.tscn" id="2_background"]
+[ext_resource type="PackedScene" path="res://scenes/shared/divider.tscn" id="3_divider"]
+[ext_resource type="PackedScene" path="res://scenes/character_select/selection_frame.tscn" id="4_frame"]
+
+[node name="CharacterSelect" type="Node2D"]
+script = ExtResource("1_select")
+
+[node name="Background" parent="." instance=ExtResource("2_background")]
+
+[node name="Divider" parent="." instance=ExtResource("3_divider")]
+
+[node name="FooterBar" type="ColorRect" parent="."]
+offset_top = 584.0
+offset_right = 1152.0
+offset_bottom = 648.0
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Player1Area" type="Node2D" parent="."]
+
+[node name="Title" type="Label" parent="Player1Area"]
+offset_top = 40.0
+offset_right = 576.0
+offset_bottom = 84.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 30
+text = "PLAYER 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyHint" type="Label" parent="Player1Area"]
+offset_top = 88.0
+offset_right = 576.0
+offset_bottom = 116.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "WASD 选择"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Options" type="Node2D" parent="Player1Area"]
+
+[node name="Frame" parent="Player1Area" instance=ExtResource("4_frame")]
+
+[node name="Player2Area" type="Node2D" parent="."]
+
+[node name="Title" type="Label" parent="Player2Area"]
+offset_left = 576.0
+offset_top = 40.0
+offset_right = 1152.0
+offset_bottom = 84.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 30
+text = "PLAYER 2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyHint" type="Label" parent="Player2Area"]
+offset_left = 576.0
+offset_top = 88.0
+offset_right = 1152.0
+offset_bottom = 116.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "方向键 选择"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Options" type="Node2D" parent="Player2Area"]
+
+[node name="Frame" parent="Player2Area" instance=ExtResource("4_frame")]
+
+[node name="Hint" type="Label" parent="."]
+offset_top = 584.0
+offset_right = 1152.0
+offset_bottom = 648.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 22
+text = "空格 开始游戏"
+horizontal_alignment = 1
+vertical_alignment = 1
