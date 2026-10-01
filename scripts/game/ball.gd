@@ -6,10 +6,7 @@ signal out_of_bounds(exit_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
-@export_range(0.0, 80.0, 1.0) var min_serve_angle_degrees := 12.0
-@export_range(0.0, 80.0, 1.0) var max_serve_angle_degrees := 35.0
-@export var max_total_serve_angle_degrees := 70.0
-@export var serve_steering_degrees := 45.0
+@export_range(0.0, 89.0, 1.0) var serve_steering_degrees := 70.0
 @export var serve_speed_from_player := 0.18
 @export var serve_spin_from_player := 0.02
 @export var max_ball_speed := 1100.0
@@ -51,32 +48,22 @@ func attach_to(origin: Vector2) -> void:
 	attached = true
 
 
-func serve(horizontal_direction: float, server_velocity: Vector2, server_move_speed: float) -> void:
+func serve(horizontal_direction: float, server_velocity: Vector2) -> void:
 	if not attached:
 		return
 
 	attached = false
 	var toward_opponent := Vector2(signf(horizontal_direction), 0.0)
-	var angle_degrees := randf_range(min_serve_angle_degrees, max_serve_angle_degrees)
-	if randf() < 0.5:
-		angle_degrees = -angle_degrees
-
-	var speed_ratio := clampf(server_velocity.length() / maxf(server_move_speed, 1.0), 0.0, 1.0)
+	var direction := toward_opponent
 	if server_velocity.length() > 0.01:
 		var movement_angle := rad_to_deg(toward_opponent.angle_to(server_velocity))
-		angle_degrees += clampf(
+		var steering_angle := clampf(
 			movement_angle,
 			-serve_steering_degrees,
 			serve_steering_degrees
-		) * speed_ratio
+		)
+		direction = toward_opponent.rotated(deg_to_rad(steering_angle))
 
-	angle_degrees = clampf(
-		angle_degrees,
-		-max_total_serve_angle_degrees,
-		max_total_serve_angle_degrees
-	)
-
-	var direction := toward_opponent.rotated(deg_to_rad(angle_degrees))
 	var launch_speed := clampf(
 		ball_speed + server_velocity.length() * serve_speed_from_player,
 		ball_speed,

@@ -66,7 +66,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if can_serve:
 		var server := player1 if serving_side == PLAYER_1_SIDE else player2
-		ball.serve(-serving_side, server.get_velocity(), server.move_speed)
+		ball.serve(-serving_side, server.get_velocity())
 		get_viewport().set_input_as_handled()
 
 
