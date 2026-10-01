@@ -22,11 +22,12 @@ func _ready() -> void:
 	background.configure(PLAYFIELD_SIZE)
 	divider.configure(PLAYFIELD_SIZE)
 
+	player1.apply_character(GameSession.get_character(0))
+	player2.apply_character(GameSession.get_character(1))
+
 	var divider_rect := divider.get_playfield_rect()
 	player1.configure(PLAYFIELD_SIZE, PLAYER_1_SIDE, divider_rect)
 	player2.configure(PLAYFIELD_SIZE, PLAYER_2_SIDE, divider_rect)
-	player1.apply_character(GameSession.get_character(0))
-	player2.apply_character(GameSession.get_character(1))
 	ball.configure(PLAYFIELD_SIZE)
 	ball.out_of_bounds.connect(_on_ball_out_of_bounds)
 	reset_game()

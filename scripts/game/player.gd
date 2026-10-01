@@ -50,6 +50,7 @@ func reset_to(center: Vector2) -> void:
 
 func apply_character(character: CharacterDef) -> void:
 	body_color = character.body_color
+	paddle_size = character.paddle_size
 	skill_speed_multiplier = character.skill_speed_multiplier
 	skill_duration = character.skill_duration
 	skill_cooldown = character.skill_cooldown
