@@ -2,7 +2,7 @@ extends Node2D
 class_name PongGame
 
 
-const PLAYFIELD_SIZE := Vector2(1280.0, 720.0)
+const PLAYFIELD_SIZE := Vector2(1800.0, 720.0)
 const BACKGROUND_COLOR := Color.BLACK
 const PADDLE_OFFSET_FROM_CENTER := 170.0
 const PLAYER_1_SIDE := -1

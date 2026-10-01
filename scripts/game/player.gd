@@ -12,9 +12,9 @@ class_name PongPlayer
 @onready var skill_trail: SkillTrail = $SkillTrail
 @onready var visual: ColorRect = $Visual
 
-var playfield_size := Vector2(1280.0, 720.0)
+var playfield_size := Vector2(1800.0, 720.0)
 var min_center_x := 0.0
-var max_center_x := 1280.0
+var max_center_x := 1800.0
 var body_color := Color.WHITE
 var velocity := Vector2.ZERO
 var _skill_time_remaining := 0.0

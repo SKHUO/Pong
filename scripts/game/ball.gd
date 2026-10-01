@@ -10,7 +10,7 @@ signal out_of_bounds(exit_side: int)
 @export var serve_speed_from_player := 0.18
 @export var serve_spin_from_player := 0.02
 @export var max_ball_speed := 1100.0
-@export var air_drag_coefficient := 0.00012
+@export var air_drag_coefficient := 0.00009
 @export var magnus_strength := 0.035
 @export var spin_damping := 1.2
 @export var max_spin := 35.0
@@ -27,7 +27,7 @@ signal out_of_bounds(exit_side: int)
 
 var velocity := Vector2.ZERO
 var angular_velocity := 0.0
-var playfield_size := Vector2(1280.0, 720.0)
+var playfield_size := Vector2(1800.0, 720.0)
 var attached := true
 
 
