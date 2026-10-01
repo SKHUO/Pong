@@ -49,25 +49,34 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not ball.is_attached() or not event is InputEventKey:
+	if not event is InputEventKey:
 		return
 
 	var key_event := event as InputEventKey
 	if not key_event.pressed or key_event.echo:
 		return
 
-	var can_serve := (
-		serving_side == PLAYER_1_SIDE
-		and (key_event.keycode == KEY_J or key_event.physical_keycode == KEY_J)
-	) or (
-		serving_side == PLAYER_2_SIDE
-		and (key_event.keycode == KEY_KP_1 or key_event.physical_keycode == KEY_KP_1)
-	)
-
-	if can_serve:
-		var server := player1 if serving_side == PLAYER_1_SIDE else player2
-		ball.serve(-serving_side, server.get_velocity())
+	if _is_player_action_key(key_event, PLAYER_1_SIDE):
+		_handle_player_action(PLAYER_1_SIDE)
 		get_viewport().set_input_as_handled()
+	elif _is_player_action_key(key_event, PLAYER_2_SIDE):
+		_handle_player_action(PLAYER_2_SIDE)
+		get_viewport().set_input_as_handled()
+
+
+func _is_player_action_key(event: InputEventKey, side: int) -> bool:
+	if side == PLAYER_1_SIDE:
+		return event.keycode == KEY_J or event.physical_keycode == KEY_J
+
+	return event.keycode == KEY_KP_1 or event.physical_keycode == KEY_KP_1
+
+
+func _handle_player_action(side: int) -> void:
+	var player := player1 if side == PLAYER_1_SIDE else player2
+	if ball.is_attached() and serving_side == side:
+		ball.serve(-side, player.get_velocity())
+	else:
+		player.try_activate_skill()
 
 
 func reset_game() -> void:
