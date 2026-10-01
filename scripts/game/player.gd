@@ -2,7 +2,7 @@ extends Node2D
 class_name PongPlayer
 
 
-@export var paddle_size := Vector2(24.0, 120.0)
+@export var paddle_size := Vector2(18.0, 80.0)
 @export var move_speed := 420.0
 @export_enum("WASD", "ArrowKeys") var control_scheme: int = 0
 

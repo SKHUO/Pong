@@ -2,7 +2,7 @@ extends Node2D
 class_name PongBall
 
 
-signal out_of_bounds
+signal out_of_bounds(exit_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
@@ -13,6 +13,7 @@ signal out_of_bounds
 
 var velocity := Vector2.ZERO
 var playfield_size := Vector2(1280.0, 720.0)
+var attached := true
 
 
 func _ready() -> void:
@@ -24,19 +25,30 @@ func configure(world_size: Vector2) -> void:
 	update_visual()
 
 
-func serve(origin: Vector2) -> void:
+func attach_to(origin: Vector2) -> void:
 	position = origin
+	velocity = Vector2.ZERO
+	attached = true
 
+
+func serve(horizontal_direction: float) -> void:
+	if not attached:
+		return
+
+	attached = false
 	var angle_degrees := randf_range(min_serve_angle_degrees, max_serve_angle_degrees)
 	if randf() < 0.5:
 		angle_degrees = -angle_degrees
 
 	var angle_radians := deg_to_rad(angle_degrees)
-	velocity = Vector2(cos(angle_radians), sin(angle_radians)) * ball_speed
+	velocity = Vector2(
+		cos(angle_radians) * signf(horizontal_direction),
+		sin(angle_radians)
+	) * ball_speed
 
 
 func move(delta: float, player1_rect: Rect2, player2_rect: Rect2) -> void:
-	if velocity == Vector2.ZERO:
+	if attached:
 		return
 
 	position += velocity * delta
@@ -45,8 +57,14 @@ func move(delta: float, player1_rect: Rect2, player2_rect: Rect2) -> void:
 	bounce_off_player(player2_rect, 1.0)
 
 	if is_out_of_playfield():
+		var ball_rect := get_rect()
+		var exit_side := -1 if ball_rect.position.x <= 0.0 else 1
 		velocity = Vector2.ZERO
-		out_of_bounds.emit()
+		out_of_bounds.emit(exit_side)
+
+
+func is_attached() -> bool:
+	return attached
 
 
 func get_rect() -> Rect2:
