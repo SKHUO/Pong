@@ -12,6 +12,7 @@ var playfield_size := Vector2(1280.0, 720.0)
 var min_center_x := 0.0
 var max_center_x := 1280.0
 var body_color := Color.WHITE
+var velocity := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -35,6 +36,7 @@ func configure(world_size: Vector2, side: int, divider_rect: Rect2) -> void:
 
 func reset_to(center: Vector2) -> void:
 	position = center
+	velocity = Vector2.ZERO
 	clamp_to_playfield()
 
 
@@ -44,10 +46,20 @@ func apply_character(character: CharacterDef) -> void:
 
 
 func move(delta: float) -> void:
+	var previous_position := position
 	var direction := get_move_direction()
 	if direction != Vector2.ZERO:
 		position += direction.normalized() * move_speed * delta
 		clamp_to_playfield()
+
+	if delta > 0.0:
+		velocity = (position - previous_position) / delta
+	else:
+		velocity = Vector2.ZERO
+
+
+func get_velocity() -> Vector2:
+	return velocity
 
 
 func get_rect() -> Rect2:

@@ -8,10 +8,28 @@ signal out_of_bounds(exit_side: int)
 @export var ball_speed := 540.0
 @export_range(0.0, 80.0, 1.0) var min_serve_angle_degrees := 12.0
 @export_range(0.0, 80.0, 1.0) var max_serve_angle_degrees := 35.0
+@export var max_total_serve_angle_degrees := 70.0
+@export var serve_steering_degrees := 45.0
+@export var serve_speed_from_player := 0.18
+@export var serve_spin_from_player := 0.02
+@export var max_ball_speed := 1100.0
+@export var air_drag_coefficient := 0.00012
+@export var magnus_strength := 0.035
+@export var spin_damping := 1.2
+@export var max_spin := 35.0
+@export_range(0.0, 1.0, 0.01) var paddle_restitution := 0.9
+@export_range(0.0, 1.0, 0.01) var paddle_friction := 0.45
+@export var max_paddle_friction_change := 340.0
+@export_range(0.0, 1.0, 0.01) var wall_restitution := 0.96
+@export_range(0.0, 1.0, 0.01) var wall_friction := 0.18
+@export var max_wall_friction_change := 140.0
+@export var min_return_horizontal_speed := 180.0
+@export var edge_deflection_speed := 90.0
 
 @onready var visual: ColorRect = $Visual
 
 var velocity := Vector2.ZERO
+var angular_velocity := 0.0
 var playfield_size := Vector2(1280.0, 720.0)
 var attached := true
 
@@ -28,39 +46,206 @@ func configure(world_size: Vector2) -> void:
 func attach_to(origin: Vector2) -> void:
 	position = origin
 	velocity = Vector2.ZERO
+	angular_velocity = 0.0
+	rotation = 0.0
 	attached = true
 
 
-func serve(horizontal_direction: float) -> void:
+func serve(horizontal_direction: float, server_velocity: Vector2, server_move_speed: float) -> void:
 	if not attached:
 		return
 
 	attached = false
+	var toward_opponent := Vector2(signf(horizontal_direction), 0.0)
 	var angle_degrees := randf_range(min_serve_angle_degrees, max_serve_angle_degrees)
 	if randf() < 0.5:
 		angle_degrees = -angle_degrees
 
-	var angle_radians := deg_to_rad(angle_degrees)
-	velocity = Vector2(
-		cos(angle_radians) * signf(horizontal_direction),
-		sin(angle_radians)
-	) * ball_speed
+	var speed_ratio := clampf(server_velocity.length() / maxf(server_move_speed, 1.0), 0.0, 1.0)
+	if server_velocity.length() > 0.01:
+		var movement_angle := rad_to_deg(toward_opponent.angle_to(server_velocity))
+		angle_degrees += clampf(
+			movement_angle,
+			-serve_steering_degrees,
+			serve_steering_degrees
+		) * speed_ratio
+
+	angle_degrees = clampf(
+		angle_degrees,
+		-max_total_serve_angle_degrees,
+		max_total_serve_angle_degrees
+	)
+
+	var direction := toward_opponent.rotated(deg_to_rad(angle_degrees))
+	var launch_speed := clampf(
+		ball_speed + server_velocity.length() * serve_speed_from_player,
+		ball_speed,
+		max_ball_speed
+	)
+	velocity = direction * launch_speed
+	var tangent := Vector2(-direction.y, direction.x)
+	angular_velocity = clampf(
+		-server_velocity.dot(tangent) * serve_spin_from_player,
+		-max_spin * 0.5,
+		max_spin * 0.5
+	)
 
 
-func move(delta: float, player1_rect: Rect2, player2_rect: Rect2) -> void:
+func move(
+	delta: float,
+	player1_rect: Rect2,
+	player2_rect: Rect2,
+	player1_velocity: Vector2,
+	player2_velocity: Vector2
+) -> void:
 	if attached:
 		return
 
-	position += velocity * delta
-	bounce_vertically()
-	bounce_off_player(player1_rect, -1.0)
-	bounce_off_player(player2_rect, 1.0)
+	apply_forces(delta)
+	var ball_radius := minf(ball_size.x, ball_size.y) * 0.5
+	var travel_distance := velocity.length() * delta
+	var substep_count := maxi(1, ceili(travel_distance / ball_radius))
+	var substep_delta := delta / float(substep_count)
 
-	if is_out_of_playfield():
-		var ball_rect := get_rect()
-		var exit_side := -1 if ball_rect.position.x <= 0.0 else 1
-		velocity = Vector2.ZERO
-		out_of_bounds.emit(exit_side)
+	for step in substep_count:
+		position += velocity * substep_delta
+		bounce_vertically()
+		bounce_off_player(player1_rect, Vector2(1.0, 0.0), player1_velocity)
+		bounce_off_player(player2_rect, Vector2(-1.0, 0.0), player2_velocity)
+
+		if is_out_of_playfield():
+			var ball_rect := get_rect()
+			var exit_side := -1 if ball_rect.position.x <= 0.0 else 1
+			velocity = Vector2.ZERO
+			angular_velocity = 0.0
+			out_of_bounds.emit(exit_side)
+			return
+
+
+func apply_forces(delta: float) -> void:
+	var speed := velocity.length()
+	if speed <= 0.001:
+		return
+
+	var drag_change := air_drag_coefficient * speed * speed * delta
+	velocity -= velocity / speed * minf(drag_change, speed)
+
+	if not is_zero_approx(angular_velocity):
+		var magnus_acceleration := Vector2(
+			-angular_velocity * velocity.y,
+			angular_velocity * velocity.x
+		) * magnus_strength
+		velocity += magnus_acceleration * delta
+
+	angular_velocity = move_toward(angular_velocity, 0.0, spin_damping * delta)
+	velocity = velocity.limit_length(max_ball_speed)
+	rotation += angular_velocity * delta
+
+
+func bounce_vertically() -> bool:
+	var ball_rect := get_rect()
+	var half_height := ball_size.y * 0.5
+
+	if ball_rect.position.y <= 0.0 and velocity.y < 0.0:
+		position.y = half_height
+		_resolve_surface_collision(
+			Vector2(0.0, 1.0),
+			Vector2.ZERO,
+			wall_restitution,
+			wall_friction,
+			max_wall_friction_change
+		)
+		return true
+
+	if ball_rect.end.y >= playfield_size.y and velocity.y > 0.0:
+		position.y = playfield_size.y - half_height
+		_resolve_surface_collision(
+			Vector2(0.0, -1.0),
+			Vector2.ZERO,
+			wall_restitution,
+			wall_friction,
+			max_wall_friction_change
+		)
+		return true
+
+	return false
+
+
+func bounce_off_player(player_rect: Rect2, normal: Vector2, player_velocity: Vector2) -> bool:
+	if not get_rect().intersects(player_rect):
+		return false
+	if velocity.dot(normal) >= 0.0:
+		return false
+
+	var half_width := ball_size.x * 0.5
+	if normal.x > 0.0:
+		position.x = player_rect.end.x + half_width
+	else:
+		position.x = player_rect.position.x - half_width
+
+	_resolve_surface_collision(
+		normal,
+		player_velocity,
+		paddle_restitution,
+		paddle_friction,
+		max_paddle_friction_change
+	)
+
+	var ball_radius := minf(ball_size.x, ball_size.y) * 0.5
+	var contact_offset := clampf(
+		(position.y - player_rect.get_center().y) / (player_rect.size.y * 0.5 + ball_radius),
+		-1.0,
+		1.0
+	)
+	velocity.y += contact_offset * edge_deflection_speed
+
+	var outward_speed := velocity.dot(normal)
+	if outward_speed < min_return_horizontal_speed:
+		velocity += normal * (min_return_horizontal_speed - outward_speed)
+
+	velocity = velocity.limit_length(max_ball_speed)
+	return true
+
+
+func _resolve_surface_collision(
+	normal: Vector2,
+	surface_velocity: Vector2,
+	restitution: float,
+	friction: float,
+	max_tangent_change: float
+) -> void:
+	normal = normal.normalized()
+	var relative_velocity := velocity - surface_velocity
+	var normal_speed := relative_velocity.dot(normal)
+	if normal_speed >= 0.0:
+		return
+
+	var ball_radius := minf(ball_size.x, ball_size.y) * 0.5
+	var contact_arm := -normal * ball_radius
+	var spin_surface_velocity := Vector2(
+		-angular_velocity * contact_arm.y,
+		angular_velocity * contact_arm.x
+	)
+	var contact_velocity := relative_velocity + spin_surface_velocity
+	var tangent := Vector2(-normal.y, normal.x)
+	var tangent_speed := contact_velocity.dot(tangent)
+	var tangent_speed_change := -clampf(
+		tangent_speed * friction,
+		-max_tangent_change,
+		max_tangent_change
+	)
+
+	velocity += tangent * tangent_speed_change
+	angular_velocity += (
+		2.0
+		* contact_arm.cross(tangent)
+		* tangent_speed_change
+		/ (ball_radius * ball_radius)
+	)
+	angular_velocity = clampf(angular_velocity, -max_spin, max_spin)
+
+	velocity -= normal * (1.0 + restitution) * normal_speed
+	velocity = velocity.limit_length(max_ball_speed)
 
 
 func is_attached() -> bool:
@@ -69,31 +254,6 @@ func is_attached() -> bool:
 
 func get_rect() -> Rect2:
 	return Rect2(position - ball_size * 0.5, ball_size)
-
-
-func bounce_vertically() -> void:
-	var ball_rect := get_rect()
-	var half_height := ball_size.y * 0.5
-
-	if ball_rect.position.y <= 0.0 and velocity.y < 0.0:
-		position.y = half_height
-		velocity.y = absf(velocity.y)
-	elif ball_rect.end.y >= playfield_size.y and velocity.y > 0.0:
-		position.y = playfield_size.y - half_height
-		velocity.y = -absf(velocity.y)
-
-
-func bounce_off_player(player_rect: Rect2, player_side: float) -> void:
-	if not get_rect().intersects(player_rect):
-		return
-
-	var half_width := ball_size.x * 0.5
-	if player_side < 0.0 and velocity.x < 0.0:
-		position.x = player_rect.end.x + half_width
-		velocity.x = absf(velocity.x)
-	elif player_side > 0.0 and velocity.x > 0.0:
-		position.x = player_rect.position.x - half_width
-		velocity.x = -absf(velocity.x)
 
 
 func is_out_of_playfield() -> bool:

@@ -39,7 +39,13 @@ func _physics_process(delta: float) -> void:
 	if ball.is_attached():
 		position_ball_on_server()
 	else:
-		ball.move(delta, player1.get_rect(), player2.get_rect())
+		ball.move(
+			delta,
+			player1.get_rect(),
+			player2.get_rect(),
+			player1.get_velocity(),
+			player2.get_velocity()
+		)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -59,7 +65,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	)
 
 	if can_serve:
-		ball.serve(-serving_side)
+		var server := player1 if serving_side == PLAYER_1_SIDE else player2
+		ball.serve(-serving_side, server.get_velocity(), server.move_speed)
 		get_viewport().set_input_as_handled()
 
 
