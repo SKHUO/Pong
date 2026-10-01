@@ -2,7 +2,7 @@ extends Node2D
 class_name CharacterSelect
 
 
-const PLAYFIELD_SIZE := Vector2(1152.0, 648.0)
+const PLAYFIELD_SIZE := Vector2(1280.0, 720.0)
 const BACKGROUND_COLOR := Color.BLACK
 const GAME_SCENE_PATH := "res://scenes/game/game.tscn"
 const CHARACTER_OPTION_SCENE := preload("res://scenes/character_select/character_option.tscn")

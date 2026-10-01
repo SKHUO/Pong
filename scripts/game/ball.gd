@@ -12,7 +12,7 @@ signal out_of_bounds
 @onready var visual: ColorRect = $Visual
 
 var velocity := Vector2.ZERO
-var playfield_size := Vector2(1152.0, 648.0)
+var playfield_size := Vector2(1280.0, 720.0)
 
 
 func _ready() -> void:
