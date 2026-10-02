@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/shared/divider.tscn" id="3_divider"]
 [ext_resource type="PackedScene" path="res://scenes/game/player.tscn" id="4_player"]
 [ext_resource type="PackedScene" path="res://scenes/game/ball.tscn" id="5_ball"]
+[ext_resource type="PackedScene" path="res://scenes/game/scoreboard.tscn" id="6_scoreboard"]
 
 [node name="Pong" type="Node2D" unique_id=381894583]
 script = ExtResource("1_game")
@@ -12,6 +13,8 @@ script = ExtResource("1_game")
 [node name="Background" parent="." unique_id=1368246452 instance=ExtResource("2_background")]
 
 [node name="Divider" parent="." unique_id=1541340246 instance=ExtResource("3_divider")]
+
+[node name="Scoreboard" parent="." unique_id=1778904873 instance=ExtResource("6_scoreboard")]
 
 [node name="Player1" parent="." unique_id=1733966400 instance=ExtResource("4_player")]
 

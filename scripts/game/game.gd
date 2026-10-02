@@ -9,6 +9,7 @@ const PLAYER_2_SIDE := 1
 
 @onready var background: PongBackground = $Background
 @onready var divider: PongDivider = $Divider
+@onready var scoreboard: PongScoreboard = $Scoreboard
 @onready var player1: PongPlayer = $Player1
 @onready var player2: PongPlayer = $Player2
 @onready var ball: PongBall = $Ball
@@ -20,6 +21,7 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(BACKGROUND_COLOR)
 	background.configure(PLAYFIELD_SIZE)
 	divider.configure(PLAYFIELD_SIZE)
+	scoreboard.configure(PLAYFIELD_SIZE)
 
 	player1.apply_character(GameSession.get_character(0))
 	player2.apply_character(GameSession.get_character(1))
@@ -81,6 +83,7 @@ func _handle_player_action(side: int) -> void:
 
 
 func reset_game() -> void:
+	scoreboard.reset_scores()
 	start_round(PLAYER_1_SIDE)
 
 
@@ -101,9 +104,13 @@ func position_ball_on_server() -> void:
 
 
 func _on_ball_out_of_bounds(exit_side: int) -> void:
-	var winner_side := -exit_side
-	start_round(winner_side)
+	award_point_and_start_round(-exit_side)
 
 
 func _on_player_area_boundary_reached(player_side: int) -> void:
-	start_round(-player_side)
+	award_point_and_start_round(-player_side)
+
+
+func award_point_and_start_round(winner_side: int) -> void:
+	scoreboard.add_point(winner_side)
+	start_round(winner_side)
