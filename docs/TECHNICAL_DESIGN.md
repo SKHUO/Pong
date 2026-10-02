@@ -175,3 +175,10 @@ Pong/
 - 开启 `binary_format/embed_pck`，关闭控制台包装，输出为 `build/windows/Pong.exe`。
 - 导出模板版本必须与编辑器一致；执行 `Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Desktop" "build/windows/Pong.exe"`。
 - `build/` 为本地构建产物，不提交到仓库。
+
+## 11. GitHub 发布
+
+- `origin` 指向 `https://github.com/SKHUO/Pong`。
+- 后续提交身份统一为 `Pong Contributors <noreply@example.com>`，避免写入个人身份。
+- 发布前扫描工作区与全部 Git 历史；历史提交完成身份脱敏后再推送。
+- 忽略并排除 `.godot/`、`.vscode/`、`build/` 和 `Prompt Draft.md`。

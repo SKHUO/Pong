@@ -118,3 +118,9 @@ Pong 是一款基于 Godot 的 2D 双人对抗小游戏。双方先各自选择�
 ## 11. 技术设计
 
 实现结构和技术约束见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。
+
+## 12. 公开发布
+
+- 公开仓库地址：https://github.com/SKHUO/Pong。
+- 公开内容不得包含个人姓名、邮箱、本机用户名、绝对路径、密钥或令牌。
+- `.godot/`、`.vscode/`、`build/` 和 `Prompt Draft.md` 仅保留在本地，不提交。
