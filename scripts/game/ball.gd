@@ -3,6 +3,7 @@ class_name PongBall
 
 
 signal out_of_bounds(exit_side: int)
+signal area_boundary_reached(player_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
@@ -17,9 +18,6 @@ signal out_of_bounds(exit_side: int)
 @export_range(0.0, 1.0, 0.01) var paddle_restitution := 0.9
 @export_range(0.0, 1.0, 0.01) var paddle_friction := 0.45
 @export var max_paddle_friction_change := 340.0
-@export_range(0.0, 1.0, 0.01) var wall_restitution := 0.96
-@export_range(0.0, 1.0, 0.01) var wall_friction := 0.18
-@export var max_wall_friction_change := 140.0
 @export var min_return_horizontal_speed := 180.0
 @export var edge_deflection_speed := 90.0
 
@@ -95,8 +93,10 @@ func move(
 	var substep_delta := delta / float(substep_count)
 
 	for step in substep_count:
+		var previous_position := position
 		position += velocity * substep_delta
-		bounce_vertically()
+		if check_player_area_vertical_boundary(previous_position, substep_delta):
+			return
 		bounce_off_player(player1_rect, Vector2(1.0, 0.0), player1_velocity)
 		bounce_off_player(player2_rect, Vector2(-1.0, 0.0), player2_velocity)
 
@@ -129,33 +129,40 @@ func apply_forces(delta: float) -> void:
 	rotation += angular_velocity * delta
 
 
-func bounce_vertically() -> bool:
+func check_player_area_vertical_boundary(
+	previous_position: Vector2,
+	substep_delta: float
+) -> bool:
 	var ball_rect := get_rect()
 	var half_height := ball_size.y * 0.5
+	var touches_top := ball_rect.position.y <= 0.0
+	var touches_bottom := ball_rect.end.y >= playfield_size.y
+	if not touches_top and not touches_bottom:
+		return false
 
-	if ball_rect.position.y <= 0.0 and velocity.y < 0.0:
+	var contact_x := position.x
+	if touches_top and velocity.y < -0.001:
+		var top_crossing_time := clampf(
+			(previous_position.y - half_height) / -velocity.y,
+			0.0,
+			substep_delta
+		)
+		contact_x = previous_position.x + velocity.x * top_crossing_time
 		position.y = half_height
-		_resolve_surface_collision(
-			Vector2(0.0, 1.0),
-			Vector2.ZERO,
-			wall_restitution,
-			wall_friction,
-			max_wall_friction_change
+	elif touches_bottom and velocity.y > 0.001:
+		var bottom_crossing_time := clampf(
+			(playfield_size.y - half_height - previous_position.y) / velocity.y,
+			0.0,
+			substep_delta
 		)
-		return true
-
-	if ball_rect.end.y >= playfield_size.y and velocity.y > 0.0:
+		contact_x = previous_position.x + velocity.x * bottom_crossing_time
 		position.y = playfield_size.y - half_height
-		_resolve_surface_collision(
-			Vector2(0.0, -1.0),
-			Vector2.ZERO,
-			wall_restitution,
-			wall_friction,
-			max_wall_friction_change
-		)
-		return true
 
-	return false
+	var player_side := -1 if contact_x < playfield_size.x * 0.5 else 1
+	velocity = Vector2.ZERO
+	angular_velocity = 0.0
+	area_boundary_reached.emit(player_side)
+	return true
 
 
 func bounce_off_player(player_rect: Rect2, normal: Vector2, player_velocity: Vector2) -> bool:

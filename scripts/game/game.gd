@@ -30,6 +30,7 @@ func _ready() -> void:
 	player2.configure(PLAYFIELD_SIZE, PLAYER_2_SIDE, divider_rect)
 	ball.configure(PLAYFIELD_SIZE)
 	ball.out_of_bounds.connect(_on_ball_out_of_bounds)
+	ball.area_boundary_reached.connect(_on_player_area_boundary_reached)
 	reset_game()
 
 
@@ -102,3 +103,7 @@ func position_ball_on_server() -> void:
 func _on_ball_out_of_bounds(exit_side: int) -> void:
 	var winner_side := -exit_side
 	start_round(winner_side)
+
+
+func _on_player_area_boundary_reached(player_side: int) -> void:
+	start_round(-player_side)
