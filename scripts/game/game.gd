@@ -3,6 +3,7 @@ class_name PongGame
 
 
 const PLAYFIELD_SIZE := PongField.SIZE
+const HIT_EFFECT_SCENE := preload("res://scenes/game/hit_effect.tscn")
 
 @onready var background: PongBackground = $Background
 @onready var divider: PongDivider = $Divider
@@ -10,6 +11,7 @@ const PLAYFIELD_SIZE := PongField.SIZE
 @onready var player1: PongPlayer = $Player1
 @onready var player2: PongPlayer = $Player2
 @onready var ball: PongBall = $Ball
+@onready var effects: Node2D = $Effects
 
 var serving_side := PlayerSide.PLAYER_1
 
@@ -32,6 +34,7 @@ func _ready() -> void:
 	ball.out_of_bounds.connect(_on_ball_out_of_bounds)
 	ball.area_boundary_reached.connect(_on_player_area_boundary_reached)
 	ball.double_hit.connect(_on_ball_double_hit)
+	ball.paddle_contact.connect(_on_ball_paddle_contact)
 	reset_game()
 
 
@@ -110,6 +113,19 @@ func _on_player_area_boundary_reached(loser_side: int) -> void:
 
 func _on_ball_double_hit(loser_side: int) -> void:
 	award_point_and_start_round(PlayerSide.opponent(loser_side))
+
+
+func _on_ball_paddle_contact(
+	player_side: int,
+	contact_position: Vector2,
+	surface_normal: Vector2
+) -> void:
+	var player := player1 if player_side == PlayerSide.PLAYER_1 else player2
+	player.play_hit_feedback()
+
+	var effect: PongHitEffect = HIT_EFFECT_SCENE.instantiate()
+	effects.add_child(effect)
+	effect.play(contact_position, ball.get_last_hitter_color(), surface_normal)
 
 
 func award_point_and_start_round(winner_side: int) -> void:

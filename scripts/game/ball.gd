@@ -5,6 +5,11 @@ class_name PongBall
 signal out_of_bounds(exit_side: int)
 signal area_boundary_reached(loser_side: int)
 signal double_hit(loser_side: int)
+signal paddle_contact(
+	player_side: int,
+	contact_position: Vector2,
+	surface_normal: Vector2
+)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
@@ -237,6 +242,10 @@ func bounce_off_player(
 
 	last_hitter_side = player_side
 	update_visual()
+	var contact_position := Vector2(
+		player_rect.end.x if normal.x > 0.0 else player_rect.position.x,
+		clampf(position.y, player_rect.position.y, player_rect.end.y)
+	)
 	var half_width := ball_size.x * 0.5
 	if normal.x > 0.0:
 		position.x = player_rect.end.x + half_width
@@ -264,6 +273,7 @@ func bounce_off_player(
 		velocity += normal * (min_return_horizontal_speed - outward_speed)
 
 	velocity = velocity.limit_length(max_ball_speed)
+	paddle_contact.emit(player_side, contact_position, normal)
 	return true
 
 
@@ -334,9 +344,12 @@ func update_ball_color() -> void:
 	if not is_instance_valid(visual):
 		return
 
+	visual.color = get_last_hitter_color()
+
+
+func get_last_hitter_color() -> Color:
 	if last_hitter_side == PlayerSide.PLAYER_1:
-		visual.color = player_1_color
-	elif last_hitter_side == PlayerSide.PLAYER_2:
-		visual.color = player_2_color
-	else:
-		visual.color = PongPalette.NEUTRAL
+		return player_1_color
+	if last_hitter_side == PlayerSide.PLAYER_2:
+		return player_2_color
+	return PongPalette.NEUTRAL
