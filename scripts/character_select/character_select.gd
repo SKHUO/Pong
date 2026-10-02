@@ -10,7 +10,7 @@ const GRID_COLUMNS := 2
 const OPTION_SIZE := Vector2(88.0, 88.0)
 const OPTION_GAP := 32.0
 const FOOTER_HEIGHT := 64.0
-const PLAYER_COLORS := [Color(0.2, 0.55, 1.0), Color(0.2, 0.9, 0.4)]
+const PLAYER_COLORS := [Color(0.424, 0.651, 0.851), Color(0.404, 0.780, 0.584)]
 
 @onready var background: PongBackground = $Background
 @onready var divider: PongDivider = $Divider

@@ -6,7 +6,7 @@ class_name SelectionFrame
 
 @onready var rect: ReferenceRect = $Rect
 
-var frame_color := Color(0.2, 0.55, 1.0)
+var frame_color := Color(0.424, 0.651, 0.851)
 
 
 func _ready() -> void:

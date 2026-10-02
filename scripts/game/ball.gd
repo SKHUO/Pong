@@ -10,8 +10,8 @@ signal area_boundary_reached(player_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
-@export var player_1_color := Color.BLUE
-@export var player_2_color := Color.GREEN
+@export var player_1_color := Color(0.424, 0.651, 0.851)
+@export var player_2_color := Color(0.404, 0.780, 0.584)
 @export_range(0.0, 89.0, 1.0) var serve_steering_degrees := 70.0
 @export var serve_speed_from_player := 0.18
 @export var serve_spin_from_player := 0.02
