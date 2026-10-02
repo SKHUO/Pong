@@ -4,7 +4,6 @@ class_name PongGame
 
 const PLAYFIELD_SIZE := Vector2(1800.0, 720.0)
 const BACKGROUND_COLOR := Color.BLACK
-const PADDLE_OFFSET_FROM_CENTER := 170.0
 const PLAYER_1_SIDE := -1
 const PLAYER_2_SIDE := 1
 
@@ -87,9 +86,10 @@ func reset_game() -> void:
 
 func start_round(server_side: int) -> void:
 	serving_side = server_side
-	var center := PLAYFIELD_SIZE * 0.5
-	player1.reset_to(center + Vector2(-PADDLE_OFFSET_FROM_CENTER, 0.0))
-	player2.reset_to(center + Vector2(PADDLE_OFFSET_FROM_CENTER, 0.0))
+	var left_half_center := Vector2(PLAYFIELD_SIZE.x * 0.25, PLAYFIELD_SIZE.y * 0.5)
+	var right_half_center := Vector2(PLAYFIELD_SIZE.x * 0.75, PLAYFIELD_SIZE.y * 0.5)
+	player1.reset_to(left_half_center)
+	player2.reset_to(right_half_center)
 	position_ball_on_server()
 
 
