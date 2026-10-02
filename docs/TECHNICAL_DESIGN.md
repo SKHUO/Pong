@@ -168,3 +168,10 @@ Pong/
 - 红色挡板尺寸准确为 `18×160`，等于白色挡板 `18×80` 的两倍长度，且碰撞矩形同步变更。
 - 技能持续或冷却期间不能重复触发；持球时按键优先发球；红色角色不会触发加速。
 - 节点职责、目录结构和引用关系符合本文档要求。
+
+## 10. Windows 单文件导出
+
+- 使用 Godot 4.7.2 的 Windows Desktop、x86_64、Release 预设。
+- 开启 `binary_format/embed_pck`，关闭控制台包装，输出为 `build/windows/Pong.exe`。
+- 导出模板版本必须与编辑器一致；执行 `Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Desktop" "build/windows/Pong.exe"`。
+- `build/` 为本地构建产物，不提交到仓库。

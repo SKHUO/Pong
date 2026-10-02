@@ -2,3 +2,5 @@
 .godot/
 /android/
 Prompt Draft.md
+.vscode
+build/
