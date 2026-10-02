@@ -97,7 +97,7 @@ func position_ball_on_server() -> void:
 	var server := player1 if serving_side == PLAYER_1_SIDE else player2
 	var toward_opponent := float(-serving_side)
 	var offset_x := (server.paddle_size.x + ball.ball_size.x) * 0.5
-	ball.attach_to(server.position + Vector2(toward_opponent * offset_x, 0.0))
+	ball.attach_to(server.position + Vector2(toward_opponent * offset_x, 0.0), serving_side)
 
 
 func _on_ball_out_of_bounds(exit_side: int) -> void:

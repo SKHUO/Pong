@@ -2,6 +2,9 @@ extends Node2D
 class_name PongBall
 
 
+const PLAYER_1_SIDE := -1
+const PLAYER_2_SIDE := 1
+
 signal out_of_bounds(exit_side: int)
 signal area_boundary_reached(player_side: int)
 
@@ -18,6 +21,9 @@ signal area_boundary_reached(player_side: int)
 @export_range(0.0, 1.0, 0.01) var paddle_restitution := 0.9
 @export_range(0.0, 1.0, 0.01) var paddle_friction := 0.45
 @export var max_paddle_friction_change := 340.0
+@export_range(0.0, 1.0, 0.01) var wall_restitution := 0.96
+@export_range(0.0, 1.0, 0.01) var wall_friction := 0.18
+@export var max_wall_friction_change := 140.0
 @export var min_return_horizontal_speed := 180.0
 @export var edge_deflection_speed := 90.0
 
@@ -27,6 +33,7 @@ var velocity := Vector2.ZERO
 var angular_velocity := 0.0
 var playfield_size := Vector2(1800.0, 720.0)
 var attached := true
+var last_hitter_side := 0
 
 
 func _ready() -> void:
@@ -38,12 +45,13 @@ func configure(world_size: Vector2) -> void:
 	update_visual()
 
 
-func attach_to(origin: Vector2) -> void:
+func attach_to(origin: Vector2, player_side: int) -> void:
 	position = origin
 	velocity = Vector2.ZERO
 	angular_velocity = 0.0
 	rotation = 0.0
 	attached = true
+	last_hitter_side = player_side
 
 
 func serve(horizontal_direction: float, server_velocity: Vector2) -> void:
@@ -97,8 +105,8 @@ func move(
 		position += velocity * substep_delta
 		if check_player_area_vertical_boundary(previous_position, substep_delta):
 			return
-		bounce_off_player(player1_rect, Vector2(1.0, 0.0), player1_velocity)
-		bounce_off_player(player2_rect, Vector2(-1.0, 0.0), player2_velocity)
+		bounce_off_player(player1_rect, PLAYER_1_SIDE, Vector2(1.0, 0.0), player1_velocity)
+		bounce_off_player(player2_rect, PLAYER_2_SIDE, Vector2(-1.0, 0.0), player2_velocity)
 
 		if is_out_of_playfield():
 			var ball_rect := get_rect()
@@ -140,37 +148,58 @@ func check_player_area_vertical_boundary(
 	if not touches_top and not touches_bottom:
 		return false
 
+	var normal := Vector2.ZERO
 	var contact_x := position.x
-	if touches_top and velocity.y < -0.001:
-		var top_crossing_time := clampf(
-			(previous_position.y - half_height) / -velocity.y,
-			0.0,
-			substep_delta
-		)
-		contact_x = previous_position.x + velocity.x * top_crossing_time
+	if touches_top:
+		if velocity.y < -0.001:
+			var top_crossing_time := clampf(
+				(previous_position.y - half_height) / -velocity.y,
+				0.0,
+				substep_delta
+			)
+			contact_x = previous_position.x + velocity.x * top_crossing_time
 		position.y = half_height
-	elif touches_bottom and velocity.y > 0.001:
-		var bottom_crossing_time := clampf(
-			(playfield_size.y - half_height - previous_position.y) / velocity.y,
-			0.0,
-			substep_delta
-		)
-		contact_x = previous_position.x + velocity.x * bottom_crossing_time
+		normal = Vector2(0.0, 1.0)
+	elif touches_bottom:
+		if velocity.y > 0.001:
+			var bottom_crossing_time := clampf(
+				(playfield_size.y - half_height - previous_position.y) / velocity.y,
+				0.0,
+				substep_delta
+			)
+			contact_x = previous_position.x + velocity.x * bottom_crossing_time
 		position.y = playfield_size.y - half_height
+		normal = Vector2(0.0, -1.0)
 
-	var player_side := -1 if contact_x < playfield_size.x * 0.5 else 1
-	velocity = Vector2.ZERO
-	angular_velocity = 0.0
-	area_boundary_reached.emit(player_side)
-	return true
+	var boundary_side := -1 if contact_x < playfield_size.x * 0.5 else 1
+	if last_hitter_side != 0 and boundary_side == last_hitter_side:
+		velocity = Vector2.ZERO
+		angular_velocity = 0.0
+		area_boundary_reached.emit(boundary_side)
+		return true
+
+	_resolve_surface_collision(
+		normal,
+		Vector2.ZERO,
+		wall_restitution,
+		wall_friction,
+		max_wall_friction_change
+	)
+	return false
 
 
-func bounce_off_player(player_rect: Rect2, normal: Vector2, player_velocity: Vector2) -> bool:
+func bounce_off_player(
+	player_rect: Rect2,
+	player_side: int,
+	normal: Vector2,
+	player_velocity: Vector2
+) -> bool:
 	if not get_rect().intersects(player_rect):
 		return false
 	if velocity.dot(normal) >= 0.0:
 		return false
 
+	last_hitter_side = player_side
 	var half_width := ball_size.x * 0.5
 	if normal.x > 0.0:
 		position.x = player_rect.end.x + half_width
