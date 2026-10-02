@@ -4,6 +4,7 @@ class_name PongBall
 
 signal out_of_bounds(exit_side: int)
 signal area_boundary_reached(loser_side: int)
+signal double_hit(loser_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
@@ -114,18 +115,20 @@ func move(
 		position += velocity * substep_delta
 		if check_player_area_vertical_boundary(previous_position, substep_delta):
 			return
-		bounce_off_player(
+		if bounce_off_player(
 			player1_rect,
 			PlayerSide.PLAYER_1,
 			Vector2(1.0, 0.0),
 			player1_velocity
-		)
-		bounce_off_player(
+		) and attached:
+			return
+		if bounce_off_player(
 			player2_rect,
 			PlayerSide.PLAYER_2,
 			Vector2(-1.0, 0.0),
 			player2_velocity
-		)
+		) and attached:
+			return
 
 		if is_out_of_playfield():
 			var ball_rect := get_rect()
@@ -223,6 +226,12 @@ func bounce_off_player(
 ) -> bool:
 	if not get_rect().intersects(player_rect):
 		return false
+
+	if last_hitter_side == player_side:
+		velocity = Vector2.ZERO
+		angular_velocity = 0.0
+		double_hit.emit(player_side)
+		return true
 	if velocity.dot(normal) >= 0.0:
 		return false
 

@@ -31,6 +31,7 @@ func _ready() -> void:
 	ball.configure(PLAYFIELD_SIZE)
 	ball.out_of_bounds.connect(_on_ball_out_of_bounds)
 	ball.area_boundary_reached.connect(_on_player_area_boundary_reached)
+	ball.double_hit.connect(_on_ball_double_hit)
 	reset_game()
 
 
@@ -104,6 +105,10 @@ func _on_ball_out_of_bounds(exit_side: int) -> void:
 
 
 func _on_player_area_boundary_reached(loser_side: int) -> void:
+	award_point_and_start_round(PlayerSide.opponent(loser_side))
+
+
+func _on_ball_double_hit(loser_side: int) -> void:
 	award_point_and_start_round(PlayerSide.opponent(loser_side))
 
 
