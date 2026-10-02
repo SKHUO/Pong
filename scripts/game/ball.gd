@@ -31,6 +31,7 @@ signal paddle_contact(
 @export var max_wall_friction_change := 140.0
 @export var min_return_horizontal_speed := 180.0
 @export var edge_deflection_speed := 90.0
+@export var double_hit_grace_period := 0.25
 
 @onready var visual: ColorRect = $Visual
 
@@ -39,6 +40,7 @@ var angular_velocity := 0.0
 var playfield_size := PongField.SIZE
 var attached := true
 var last_hitter_side := PlayerSide.NONE
+var _double_hit_grace_remaining := 0.0
 
 
 func _ready() -> void:
@@ -62,6 +64,7 @@ func attach_to(origin: Vector2, player_side: int) -> void:
 	rotation = 0.0
 	attached = true
 	last_hitter_side = player_side
+	_double_hit_grace_remaining = double_hit_grace_period
 	update_visual()
 
 
@@ -71,6 +74,7 @@ func serve(server_side: int, server_velocity: Vector2) -> void:
 
 	assert(PlayerSide.is_valid(server_side))
 	attached = false
+	_double_hit_grace_remaining = double_hit_grace_period
 	var toward_opponent := Vector2(
 		PlayerSide.direction_toward_opponent(server_side),
 		0.0
@@ -116,6 +120,10 @@ func move(
 	var substep_delta := delta / float(substep_count)
 
 	for step in substep_count:
+		_double_hit_grace_remaining = maxf(
+			_double_hit_grace_remaining - substep_delta,
+			0.0
+		)
 		var previous_position := position
 		position += velocity * substep_delta
 		if check_player_area_vertical_boundary(previous_position, substep_delta):
@@ -232,6 +240,8 @@ func bounce_off_player(
 	if not get_rect().intersects(player_rect):
 		return false
 
+	if last_hitter_side == player_side and _double_hit_grace_remaining > 0.0:
+		return false
 	if last_hitter_side == player_side:
 		velocity = Vector2.ZERO
 		angular_velocity = 0.0
@@ -241,6 +251,7 @@ func bounce_off_player(
 		return false
 
 	last_hitter_side = player_side
+	_double_hit_grace_remaining = double_hit_grace_period
 	update_visual()
 	var contact_position := Vector2(
 		player_rect.end.x if normal.x > 0.0 else player_rect.position.x,
