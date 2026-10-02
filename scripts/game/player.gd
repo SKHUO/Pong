@@ -12,9 +12,10 @@ class_name PongPlayer
 @onready var skill_trail: SkillTrail = $SkillTrail
 @onready var visual: ColorRect = $Visual
 
-var playfield_size := Vector2(1800.0, 720.0)
+var playfield_size := PongField.SIZE
+var player_side := PlayerSide.NONE
 var min_center_x := 0.0
-var max_center_x := 1800.0
+var max_center_x := PongField.SIZE.x
 var body_color := Color.WHITE
 var velocity := Vector2.ZERO
 var _skill_time_remaining := 0.0
@@ -25,36 +26,21 @@ func _ready() -> void:
 	update_visual()
 
 
-func configure(world_size: Vector2, side: int, divider_rect: Rect2) -> void:
-	playfield_size = world_size
-	var half_size := paddle_size * 0.5
-
-	if side < 0:
-		min_center_x = half_size.x
-		max_center_x = divider_rect.position.x - half_size.x
-	else:
-		min_center_x = divider_rect.end.x + half_size.x
-		max_center_x = world_size.x - half_size.x
-
-	update_visual()
+func setup(character: CharacterDef, side: int) -> void:
+	assert(PlayerSide.is_valid(side))
+	player_side = side
+	_apply_character(character)
+	_configure_bounds()
 	clamp_to_playfield()
 
 
-func reset_to(center: Vector2) -> void:
-	position = center
+func reset_for_round() -> void:
+	assert(PlayerSide.is_valid(player_side))
+	position = PongField.get_half_center(player_side)
 	velocity = Vector2.ZERO
 	if is_instance_valid(skill_trail):
 		skill_trail.clear()
 	clamp_to_playfield()
-
-
-func apply_character(character: CharacterDef) -> void:
-	body_color = character.body_color
-	paddle_size = character.paddle_size
-	skill_speed_multiplier = character.skill_speed_multiplier
-	skill_duration = character.skill_duration
-	skill_cooldown = character.skill_cooldown
-	update_visual()
 
 
 func move(delta: float) -> void:
@@ -82,6 +68,19 @@ func move(delta: float) -> void:
 
 func get_velocity() -> Vector2:
 	return velocity
+
+
+func get_side() -> int:
+	return player_side
+
+
+func get_ball_anchor(ball_size: Vector2) -> Vector2:
+	assert(PlayerSide.is_valid(player_side))
+	var offset_x := (paddle_size.x + ball_size.x) * 0.5
+	return position + Vector2(
+		PlayerSide.direction_toward_opponent(player_side) * offset_x,
+		0.0
+	)
 
 
 func try_activate_skill() -> bool:
@@ -134,6 +133,25 @@ func clamp_to_playfield() -> void:
 	position.y = clampf(position.y, half_size.y, playfield_size.y - half_size.y)
 
 
+func _apply_character(character: CharacterDef) -> void:
+	body_color = character.body_color
+	paddle_size = character.paddle_size
+	skill_speed_multiplier = character.skill_speed_multiplier
+	skill_duration = character.skill_duration
+	skill_cooldown = character.skill_cooldown
+	update_visual()
+
+
+func _configure_bounds() -> void:
+	var half_size := paddle_size * 0.5
+	if player_side == PlayerSide.PLAYER_1:
+		min_center_x = half_size.x
+		max_center_x = PongField.CENTER_X - half_size.x
+	else:
+		min_center_x = PongField.CENTER_X + half_size.x
+		max_center_x = PongField.SIZE.x - half_size.x
+
+
 func _update_skill_timers(delta: float) -> void:
 	_skill_time_remaining = maxf(_skill_time_remaining - delta, 0.0)
 	_skill_cooldown_remaining = maxf(_skill_cooldown_remaining - delta, 0.0)
@@ -144,6 +162,9 @@ func _update_skill_timers(delta: float) -> void:
 
 
 func update_visual() -> void:
+	if not is_instance_valid(visual):
+		return
+
 	visual.position = -paddle_size * 0.5
 	visual.size = paddle_size
 	visual.color = body_color

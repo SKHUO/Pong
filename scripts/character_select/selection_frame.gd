@@ -6,7 +6,7 @@ class_name SelectionFrame
 
 @onready var rect: ReferenceRect = $Rect
 
-var frame_color := Color(0.424, 0.651, 0.851)
+var frame_color := PongPalette.PLAYER_1
 
 
 func _ready() -> void:

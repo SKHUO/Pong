@@ -2,15 +2,13 @@ extends Node2D
 class_name CharacterSelect
 
 
-const PLAYFIELD_SIZE := Vector2(1800.0, 720.0)
-const BACKGROUND_COLOR := Color.BLACK
+const PLAYFIELD_SIZE := PongField.SIZE
 const GAME_SCENE_PATH := "res://scenes/game/game.tscn"
 const CHARACTER_OPTION_SCENE := preload("res://scenes/character_select/character_option.tscn")
 const GRID_COLUMNS := 2
 const OPTION_SIZE := Vector2(88.0, 88.0)
 const OPTION_GAP := 32.0
 const FOOTER_HEIGHT := 64.0
-const PLAYER_COLORS := [Color(0.424, 0.651, 0.851), Color(0.404, 0.780, 0.584)]
 
 @onready var background: PongBackground = $Background
 @onready var divider: PongDivider = $Divider
@@ -26,14 +24,14 @@ var _starting := false
 
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(BACKGROUND_COLOR)
+	RenderingServer.set_default_clear_color(PongPalette.BACKGROUND)
 	background.configure(PLAYFIELD_SIZE)
 	divider.configure(PLAYFIELD_SIZE)
 	_layout_footer()
 
 	_characters = CharacterLibrary.get_all()
-	for side in area_nodes.size():
-		_setup_area(side)
+	for area_index in area_nodes.size():
+		_setup_area(area_index)
 	_refresh_selection()
 
 
@@ -62,40 +60,40 @@ func _unhandled_input(event: InputEvent) -> void:
 			_start_game()
 
 
-func _setup_area(side: int) -> void:
-	var area := area_nodes[side]
-	var frame := frame_nodes[side]
-	var player_color: Color = PLAYER_COLORS[side]
+func _setup_area(area_index: int) -> void:
+	var area := area_nodes[area_index]
+	var frame := frame_nodes[area_index]
+	var player_color := PongPalette.get_player_color(PlayerSide.from_index(area_index))
 
 	area.get_node("Title").add_theme_color_override("font_color", player_color)
 	area.get_node("KeyHint").add_theme_color_override("font_color", player_color.darkened(0.2))
 	frame.set_frame_color(player_color)
 
 	var options_holder: Node2D = area.get_node("Options")
-	var side_options := []
+	var area_options := []
 	for index in _characters.size():
 		var option: CharacterOption = CHARACTER_OPTION_SCENE.instantiate()
 		options_holder.add_child(option)
 		option.option_size = OPTION_SIZE
-		option.position = _option_position(side, index)
+		option.position = _option_position(area_index, index)
 		option.setup(_characters[index])
-		side_options.append(option)
-	_option_nodes.append(side_options)
+		area_options.append(option)
+	_option_nodes.append(area_options)
 
 
-func _option_position(side: int, index: int) -> Vector2:
+func _option_position(area_index: int, index: int) -> Vector2:
 	var grid_size := Vector2(
 		GRID_COLUMNS * OPTION_SIZE.x + (GRID_COLUMNS - 1) * OPTION_GAP,
 		_grid_rows() * OPTION_SIZE.y + (_grid_rows() - 1) * OPTION_GAP
 	)
-	var side_center := Vector2(
-		PLAYFIELD_SIZE.x * 0.5 * (float(side) + 0.5),
+	var area_center := Vector2(
+		PLAYFIELD_SIZE.x * 0.5 * (float(area_index) + 0.5),
 		PLAYFIELD_SIZE.y * 0.5
 	)
 	var column := index % GRID_COLUMNS
 	var row := floori(float(index) / float(GRID_COLUMNS))
 
-	return side_center - grid_size * 0.5 + Vector2(
+	return area_center - grid_size * 0.5 + Vector2(
 		column * (OPTION_SIZE.x + OPTION_GAP),
 		row * (OPTION_SIZE.y + OPTION_GAP)
 	) + OPTION_SIZE * 0.5
@@ -105,8 +103,8 @@ func _grid_rows() -> int:
 	return ceili(float(_characters.size()) / float(GRID_COLUMNS))
 
 
-func _move_selection(side: int, direction: Vector2i) -> void:
-	var index: int = _selected_indices[side]
+func _move_selection(player_index: int, direction: Vector2i) -> void:
+	var index: int = _selected_indices[player_index]
 	var row := floori(float(index) / float(GRID_COLUMNS))
 	var target_row := row + direction.y
 	if target_row < 0 or target_row >= _grid_rows():
@@ -118,14 +116,14 @@ func _move_selection(side: int, direction: Vector2i) -> void:
 	if target_index == index:
 		return
 
-	_selected_indices[side] = target_index
+	_selected_indices[player_index] = target_index
 	_refresh_selection()
 
 
 func _refresh_selection() -> void:
-	for side in _option_nodes.size():
-		var option: CharacterOption = _option_nodes[side][_selected_indices[side]]
-		frame_nodes[side].wrap(option.get_rect())
+	for player_index in _option_nodes.size():
+		var option: CharacterOption = _option_nodes[player_index][_selected_indices[player_index]]
+		frame_nodes[player_index].wrap(option.get_rect())
 
 
 func _start_game() -> void:

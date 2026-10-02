@@ -6,5 +6,6 @@ class_name PongBackground
 
 
 func configure(playfield_size: Vector2) -> void:
+	visual.color = PongPalette.BACKGROUND
 	visual.position = Vector2.ZERO
 	visual.size = playfield_size

@@ -14,6 +14,9 @@ var _player2_score := 0
 
 
 func configure(playfield_size: Vector2) -> void:
+	player1_label.add_theme_color_override("font_color", PongPalette.SCORE)
+	player2_label.add_theme_color_override("font_color", PongPalette.SCORE)
+
 	var center_x := playfield_size.x * 0.5
 	player1_label.size = LABEL_SIZE
 	player2_label.size = LABEL_SIZE
@@ -29,7 +32,8 @@ func reset_scores() -> void:
 
 
 func add_point(player_side: int) -> void:
-	if player_side < 0:
+	assert(PlayerSide.is_valid(player_side))
+	if player_side == PlayerSide.PLAYER_1:
 		_player1_score += 1
 	else:
 		_player2_score += 1

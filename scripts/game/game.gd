@@ -2,10 +2,7 @@ extends Node2D
 class_name PongGame
 
 
-const PLAYFIELD_SIZE := Vector2(1800.0, 720.0)
-const BACKGROUND_COLOR := Color.BLACK
-const PLAYER_1_SIDE := -1
-const PLAYER_2_SIDE := 1
+const PLAYFIELD_SIZE := PongField.SIZE
 
 @onready var background: PongBackground = $Background
 @onready var divider: PongDivider = $Divider
@@ -14,21 +11,23 @@ const PLAYER_2_SIDE := 1
 @onready var player2: PongPlayer = $Player2
 @onready var ball: PongBall = $Ball
 
-var serving_side := PLAYER_1_SIDE
+var serving_side := PlayerSide.PLAYER_1
 
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(BACKGROUND_COLOR)
+	RenderingServer.set_default_clear_color(PongPalette.BACKGROUND)
 	background.configure(PLAYFIELD_SIZE)
 	divider.configure(PLAYFIELD_SIZE)
 	scoreboard.configure(PLAYFIELD_SIZE)
 
-	player1.apply_character(GameSession.get_character(0))
-	player2.apply_character(GameSession.get_character(1))
-
-	var divider_rect := divider.get_playfield_rect()
-	player1.configure(PLAYFIELD_SIZE, PLAYER_1_SIDE, divider_rect)
-	player2.configure(PLAYFIELD_SIZE, PLAYER_2_SIDE, divider_rect)
+	player1.setup(
+		CharacterLibrary.get_by_id(GameSession.get_character_id(PlayerSide.PLAYER_1)),
+		PlayerSide.PLAYER_1
+	)
+	player2.setup(
+		CharacterLibrary.get_by_id(GameSession.get_character_id(PlayerSide.PLAYER_2)),
+		PlayerSide.PLAYER_2
+	)
 	ball.configure(PLAYFIELD_SIZE)
 	ball.out_of_bounds.connect(_on_ball_out_of_bounds)
 	ball.area_boundary_reached.connect(_on_player_area_boundary_reached)
@@ -59,58 +58,56 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo:
 		return
 
-	if _is_player_action_key(key_event, PLAYER_1_SIDE):
-		_handle_player_action(PLAYER_1_SIDE)
+	if _is_player_action_key(key_event, PlayerSide.PLAYER_1):
+		_handle_player_action(PlayerSide.PLAYER_1)
 		get_viewport().set_input_as_handled()
-	elif _is_player_action_key(key_event, PLAYER_2_SIDE):
-		_handle_player_action(PLAYER_2_SIDE)
+	elif _is_player_action_key(key_event, PlayerSide.PLAYER_2):
+		_handle_player_action(PlayerSide.PLAYER_2)
 		get_viewport().set_input_as_handled()
 
 
 func _is_player_action_key(event: InputEventKey, side: int) -> bool:
-	if side == PLAYER_1_SIDE:
+	if side == PlayerSide.PLAYER_1:
 		return event.keycode == KEY_J or event.physical_keycode == KEY_J
 
 	return event.keycode == KEY_KP_1 or event.physical_keycode == KEY_KP_1
 
 
 func _handle_player_action(side: int) -> void:
-	var player := player1 if side == PLAYER_1_SIDE else player2
+	var player := player1 if side == PlayerSide.PLAYER_1 else player2
 	if ball.is_attached() and serving_side == side:
-		ball.serve(-side, player.get_velocity())
+		ball.serve(side, player.get_velocity())
 	else:
 		player.try_activate_skill()
 
 
 func reset_game() -> void:
 	scoreboard.reset_scores()
-	start_round(PLAYER_1_SIDE)
+	start_round(PlayerSide.PLAYER_1)
 
 
 func start_round(server_side: int) -> void:
+	assert(PlayerSide.is_valid(server_side))
 	serving_side = server_side
-	var left_half_center := Vector2(PLAYFIELD_SIZE.x * 0.25, PLAYFIELD_SIZE.y * 0.5)
-	var right_half_center := Vector2(PLAYFIELD_SIZE.x * 0.75, PLAYFIELD_SIZE.y * 0.5)
-	player1.reset_to(left_half_center)
-	player2.reset_to(right_half_center)
+	player1.reset_for_round()
+	player2.reset_for_round()
 	position_ball_on_server()
 
 
 func position_ball_on_server() -> void:
-	var server := player1 if serving_side == PLAYER_1_SIDE else player2
-	var toward_opponent := float(-serving_side)
-	var offset_x := (server.paddle_size.x + ball.ball_size.x) * 0.5
-	ball.attach_to(server.position + Vector2(toward_opponent * offset_x, 0.0), serving_side)
+	var server := player1 if serving_side == PlayerSide.PLAYER_1 else player2
+	ball.attach_to_player(server)
 
 
 func _on_ball_out_of_bounds(exit_side: int) -> void:
-	award_point_and_start_round(-exit_side)
+	award_point_and_start_round(PlayerSide.opponent(exit_side))
 
 
-func _on_player_area_boundary_reached(player_side: int) -> void:
-	award_point_and_start_round(-player_side)
+func _on_player_area_boundary_reached(loser_side: int) -> void:
+	award_point_and_start_round(PlayerSide.opponent(loser_side))
 
 
 func award_point_and_start_round(winner_side: int) -> void:
+	assert(PlayerSide.is_valid(winner_side))
 	scoreboard.add_point(winner_side)
 	start_round(winner_side)

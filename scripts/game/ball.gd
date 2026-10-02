@@ -2,16 +2,13 @@ extends Node2D
 class_name PongBall
 
 
-const PLAYER_1_SIDE := -1
-const PLAYER_2_SIDE := 1
-
 signal out_of_bounds(exit_side: int)
-signal area_boundary_reached(player_side: int)
+signal area_boundary_reached(loser_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
-@export var player_1_color := Color(0.424, 0.651, 0.851)
-@export var player_2_color := Color(0.404, 0.780, 0.584)
+@export var player_1_color := PongPalette.PLAYER_1
+@export var player_2_color := PongPalette.PLAYER_2
 @export_range(0.0, 89.0, 1.0) var serve_steering_degrees := 70.0
 @export var serve_speed_from_player := 0.18
 @export var serve_spin_from_player := 0.02
@@ -33,9 +30,9 @@ signal area_boundary_reached(player_side: int)
 
 var velocity := Vector2.ZERO
 var angular_velocity := 0.0
-var playfield_size := Vector2(1800.0, 720.0)
+var playfield_size := PongField.SIZE
 var attached := true
-var last_hitter_side := 0
+var last_hitter_side := PlayerSide.NONE
 
 
 func _ready() -> void:
@@ -47,7 +44,12 @@ func configure(world_size: Vector2) -> void:
 	update_visual()
 
 
+func attach_to_player(player: PongPlayer) -> void:
+	attach_to(player.get_ball_anchor(ball_size), player.get_side())
+
+
 func attach_to(origin: Vector2, player_side: int) -> void:
+	assert(PlayerSide.is_valid(player_side))
 	position = origin
 	velocity = Vector2.ZERO
 	angular_velocity = 0.0
@@ -57,12 +59,16 @@ func attach_to(origin: Vector2, player_side: int) -> void:
 	update_visual()
 
 
-func serve(horizontal_direction: float, server_velocity: Vector2) -> void:
+func serve(server_side: int, server_velocity: Vector2) -> void:
 	if not attached:
 		return
 
+	assert(PlayerSide.is_valid(server_side))
 	attached = false
-	var toward_opponent := Vector2(signf(horizontal_direction), 0.0)
+	var toward_opponent := Vector2(
+		PlayerSide.direction_toward_opponent(server_side),
+		0.0
+	)
 	var direction := toward_opponent
 	if server_velocity.length() > 0.01:
 		var movement_angle := rad_to_deg(toward_opponent.angle_to(server_velocity))
@@ -108,12 +114,26 @@ func move(
 		position += velocity * substep_delta
 		if check_player_area_vertical_boundary(previous_position, substep_delta):
 			return
-		bounce_off_player(player1_rect, PLAYER_1_SIDE, Vector2(1.0, 0.0), player1_velocity)
-		bounce_off_player(player2_rect, PLAYER_2_SIDE, Vector2(-1.0, 0.0), player2_velocity)
+		bounce_off_player(
+			player1_rect,
+			PlayerSide.PLAYER_1,
+			Vector2(1.0, 0.0),
+			player1_velocity
+		)
+		bounce_off_player(
+			player2_rect,
+			PlayerSide.PLAYER_2,
+			Vector2(-1.0, 0.0),
+			player2_velocity
+		)
 
 		if is_out_of_playfield():
 			var ball_rect := get_rect()
-			var exit_side := -1 if ball_rect.position.x <= 0.0 else 1
+			var exit_side := (
+				PlayerSide.PLAYER_1
+				if ball_rect.position.x <= 0.0
+				else PlayerSide.PLAYER_2
+			)
 			velocity = Vector2.ZERO
 			angular_velocity = 0.0
 			out_of_bounds.emit(exit_side)
@@ -174,8 +194,12 @@ func check_player_area_vertical_boundary(
 		position.y = playfield_size.y - half_height
 		normal = Vector2(0.0, -1.0)
 
-	var boundary_side := -1 if contact_x < playfield_size.x * 0.5 else 1
-	if last_hitter_side != 0 and boundary_side == last_hitter_side:
+	var boundary_side := (
+		PlayerSide.PLAYER_1
+		if contact_x < playfield_size.x * 0.5
+		else PlayerSide.PLAYER_2
+	)
+	if last_hitter_side != PlayerSide.NONE and boundary_side == last_hitter_side:
 		velocity = Vector2.ZERO
 		angular_velocity = 0.0
 		area_boundary_reached.emit(boundary_side)
@@ -301,9 +325,9 @@ func update_ball_color() -> void:
 	if not is_instance_valid(visual):
 		return
 
-	if last_hitter_side == PLAYER_1_SIDE:
+	if last_hitter_side == PlayerSide.PLAYER_1:
 		visual.color = player_1_color
-	elif last_hitter_side == PLAYER_2_SIDE:
+	elif last_hitter_side == PlayerSide.PLAYER_2:
 		visual.color = player_2_color
 	else:
-		visual.color = Color.WHITE
+		visual.color = PongPalette.NEUTRAL
