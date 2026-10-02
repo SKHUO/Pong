@@ -11,7 +11,7 @@ static var _characters: Array[CharacterDef] = []
 static func get_all() -> Array[CharacterDef]:
 	if _characters.is_empty():
 		_characters = [
-			_build(&"white", "白色角色", Color(1.0, 1.0, 1.0), WHITE_PADDLE_SIZE, 1.5, 0.5, 1.5),
+			_build(&"white", "白色角色", Color(1.0, 1.0, 1.0), WHITE_PADDLE_SIZE, 2.0, 0.5, 1.5),
 			_build(&"red", "红色角色", Color(0.9, 0.2, 0.2), RED_PADDLE_SIZE),
 		]
 	return _characters
