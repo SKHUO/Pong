@@ -10,6 +10,8 @@ signal area_boundary_reached(player_side: int)
 
 @export var ball_size := Vector2(18.0, 18.0)
 @export var ball_speed := 540.0
+@export var player_1_color := Color.BLUE
+@export var player_2_color := Color.GREEN
 @export_range(0.0, 89.0, 1.0) var serve_steering_degrees := 70.0
 @export var serve_speed_from_player := 0.18
 @export var serve_spin_from_player := 0.02
@@ -52,6 +54,7 @@ func attach_to(origin: Vector2, player_side: int) -> void:
 	rotation = 0.0
 	attached = true
 	last_hitter_side = player_side
+	update_visual()
 
 
 func serve(horizontal_direction: float, server_velocity: Vector2) -> void:
@@ -200,6 +203,7 @@ func bounce_off_player(
 		return false
 
 	last_hitter_side = player_side
+	update_visual()
 	var half_width := ball_size.x * 0.5
 	if normal.x > 0.0:
 		position.x = player_rect.end.x + half_width
@@ -285,5 +289,21 @@ func is_out_of_playfield() -> bool:
 
 
 func update_visual() -> void:
+	if not is_instance_valid(visual):
+		return
+
 	visual.position = -ball_size * 0.5
 	visual.size = ball_size
+	update_ball_color()
+
+
+func update_ball_color() -> void:
+	if not is_instance_valid(visual):
+		return
+
+	if last_hitter_side == PLAYER_1_SIDE:
+		visual.color = player_1_color
+	elif last_hitter_side == PLAYER_2_SIDE:
+		visual.color = player_2_color
+	else:
+		visual.color = Color.WHITE
