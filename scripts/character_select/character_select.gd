@@ -95,8 +95,10 @@ func _handle_online_input(event: InputEventKey) -> void:
 	elif _event_matches_key(event, KEY_D):
 		direction = Vector2i(1, 0)
 	elif _event_matches_key(event, KEY_J):
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 		_toggle_online_ready()
-		get_viewport().set_input_as_handled()
 		return
 
 	if direction != Vector2i.ZERO and _move_selection(_local_player_index, direction):
@@ -225,7 +227,9 @@ func _server_set_online_selection(side: int, character_id: StringName, ready: bo
 	var resolved_character := CharacterLibrary.get_by_id(character_id)
 	_online_character_ids[player_index] = resolved_character.id
 	_online_ready[player_index] = ready
+	_selected_indices[player_index] = _find_character_index(resolved_character.id)
 	GameSession.set_character_id(side, resolved_character.id)
+	_refresh_selection()
 
 	if _online_ready[0] and _online_ready[1]:
 		_start_online_game()
