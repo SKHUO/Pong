@@ -8,6 +8,8 @@
 Pong/
 ├─ project.godot
 ├─ scenes/
+│  ├─ mode_select/
+│  │  └─ mode_select.tscn
 │  ├─ character_select/
 │  │  ├─ character_select.tscn
 │  │  ├─ character_option.tscn
@@ -22,6 +24,10 @@ Pong/
 │     ├─ background.tscn
 │     └─ divider.tscn
 └─ scripts/
+   ├─ mode_select/
+   │  └─ mode_select.gd
+   ├─ network/
+   │  └─ network_manager.gd
    ├─ character_select/
    │  ├─ character_select.gd
    │  ├─ character_option.gd
@@ -49,7 +55,7 @@ Pong/
 
 - `scenes` 与 `scripts` 使用相同的功能模块层级。
 - 仅被单个功能使用的场景和脚本放入对应模块。
-- 角色选择与对战共用的背景、分界线放入 `shared`。
+- 角色选择与对战共用的背景、分界线放入 `shared`；模式入口与网络生命周期分别放入 `mode_select` 和 `network`。
 - 角色定义、角色库和游戏会话状态放入 `data`。
 - 场地尺寸、玩家阵营和统一配色定义放入 `data`，业务脚本只引用，不重复声明。
 - `.gd.uid` 文件跟随脚本移动，不单独管理。
@@ -58,7 +64,8 @@ Pong/
 
 | 场景 | 文件 | 职责 |
 | --- | --- | --- |
-| 角色选择页 | `scenes/character_select/character_select.tscn` | 游戏主场景，负责角色选择的界面与输入，确认后切换到对战场景。 |
+| 模式选择页 | `scenes/mode_select/mode_select.tscn` | 游戏主场景；选择本地模式、创建房间或输入房主 IP 加入房间。 |
+| 角色选择页 | `scenes/character_select/character_select.tscn` | 本地模式处理双方选择；联机模式同步双方角色与准备状态。 |
 | 对战 | `scenes/game/game.tscn` | 负责一局对战的组合、物理模拟与流程编排。 |
 | 比分显示 | `scenes/game/scoreboard.tscn` | 负责在对战画面顶部显示双方累计比分。 |
 | 打击效果 | `scenes/game/hit_effect.tscn` | 在合法触球点播放一次性粒子并自动销毁。 |
@@ -67,16 +74,18 @@ Pong/
 
 | 节点 | 职责 |
 | --- | --- |
-| `CharacterSelect` | 角色选择页总控，负责生成选项、处理双方按键与开始游戏。 |
+| `ModeSelect` | 模式选择页总控，负责本地入口、ENet 房间创建/加入、连接状态与错误提示。 |
+| `NetworkManager` | 自动加载单例，持有 ENet 会话、本地阵营和房主/加入者身份，并在连接或断线时发出信号。 |
+| `CharacterSelect` | 角色选择页总控；本地模式处理双方按键，联机模式仅控制本侧并通过 RPC 同步角色和准备状态。 |
 | `CharacterOption` | 单个角色选项，用彩色方块表示一个角色。 |
 | `SelectionFrame` | 选中标记，用彩色方框框住被选中的选项。 |
-| `PongGame` | 对战总控，负责组合、比分累计、回合胜负、发球方、打击反馈和重新开始；通过语义化接口调用子节点。 |
+| `PongGame` | 对战总控；本地和联机房主运行完整物理，联机加入者上传输入并应用房主快照。 |
 | `Background` | 负责黑色背景。 |
 | `Divider` | 负责中央分界线及其边界范围；选择页与对战共用。 |
 | `Scoreboard` | 负责在中央分界线左右显示双方白色累计比分。 |
-| `Player` | 负责移动、输入、边界限制、挡板尺寸、角色技能状态和击球震动；通过 `setup()` 一次完成角色与阵营初始化，并提供发球附着点。 |
+| `Player` | 负责移动、输入、边界限制、角色技能与击球震动；可接收方向输入运行权威模拟，也可作为联机加入者接收并平滑显示状态。 |
 | `SkillTrail` | 在技能期间记录挡板位置并绘制渐隐幻影；仅负责视觉表现。 |
-| `Ball` | 负责待发、速度、旋转、空气阻力、Magnus 力、挡板触球归属、触点信号、带时限的二次击球判负、小球归属色、上下边界反弹与判负和左右越界信号；提供按发球方附着与发球接口。 |
+| `Ball` | 房主端负责待发、物理、碰撞和判负；加入者端接收位置、旋转、归属色和附着状态并平滑显示。 |
 | `Effects` | 打击效果容器，挂载触点粒子实例并保持在普通游戏对象上层。 |
 | `HitEffect` | 在指定触点和法线方向发射与球同色的一次性方形粒子，结束后自动销毁。 |
 
@@ -89,15 +98,28 @@ Pong/
 | `PongPalette` | `scripts/data/pong_palette.gd` | 统一背景、分界线、比分和双方蓝绿配色。 |
 | `CharacterDef` | `scripts/data/character.gd` | 角色定义，包含 id、名称、身体颜色、挡板尺寸及技能倍率、持续时间、冷却。 |
 | `CharacterLibrary` | `scripts/data/character_library.gd` | 角色注册表，集中定义全部可选角色，并提供按 id 查询。 |
-| `GameSession` | `scripts/data/game_session.gd` | 自动加载单例，按玩家侧别保存所选角色 id；对战场景通过 `CharacterLibrary` 解析角色定义。 |
+| `GameSession` | `scripts/data/game_session.gd` | 自动加载单例，保存离线/联机模式、本地阵营和双方角色 id。 |
+| `NetworkManager` | `scripts/network/network_manager.gd` | 自动加载单例，使用 `ENetMultiplayerPeer` 管理房主、加入、断线和默认端口 `7788`。 |
 | `PongScoreboard` | `scripts/game/scoreboard.gd` | 保存双方比分、更新数字显示，并提供加 1 分与重置接口。 |
-| `PongPlayer` | `scripts/game/player.gd` | 通过 `setup()` 应用角色、阵营和边界，保存实际速度、技能计时及击球震动状态；技能期间驱动 `SkillTrail`。 |
-| `PongBall` | `scripts/game/ball.gd` | 运行时保存线速度、角速度、最后触球方、二次击球宽限和小球颜色；上报触点并从发球方取得附着点。 |
+| `PongPlayer` | `scripts/game/player.gd` | 通过 `setup()` 应用角色、阵营和边界；本地和房主端处理输入、技能与击球，加入者端应用网络位置和技能状态。 |
+| `PongBall` | `scripts/game/ball.gd` | 房主端保存并推进速度、旋转、触球归属和二次击球状态；加入者端保存快照状态并平滑显示。 |
 | `PongHitEffect` | `scripts/game/hit_effect.gd` | 接收触点、颜色和法线，控制一次性粒子播放及生命周期。 |
 
 白色挡板尺寸为 `18×80`，红色挡板尺寸为 `18×160`。`PongPlayer.setup()` 内部依次应用角色数据和边界范围，确保碰撞矩形、可视挡板和幻影使用相同尺寸。
 
-## 5. 回合与发球流程
+## 5. 模式与联机流程
+
+- 主场景为模式选择页；本地模式设置 `GameSession.Mode.OFFLINE` 后进入角色选择。
+- 房主使用 UDP 端口 `7788` 创建 ENet 服务端；加入者输入房主 IP 连接同一端口。
+- 房主固定 Player 1，加入者固定 Player 2；连接到第二名玩家后由房主通知双方进入角色选择。
+- 联机角色选择中，每名玩家只控制本侧并仅使用 WASD/J；J 切换准备状态，角色 id 与准备状态由客户端可靠 RPC 提交给房主。
+- 房主广播双方角色和准备状态；双方均准备后，房主同步最终角色并切换双方到对战场景。
+- 联机对战由房主权威模拟；加入者每物理帧发送 WASD 方向（不可靠有序 RPC）和 J 动作（可靠 RPC）。
+- 房主以固定物理帧运行现有球与挡板模拟，并发送包含玩家、球、回合、发球方和比分的状态快照。
+- 加入者不运行本地物理；玩家和小球根据最新快照插值显示，命中粒子由独立可靠 RPC 触发。
+- 任一玩家断线时关闭会话并返回模式选择页；房主在玩家离线后停止物理与状态广播。
+
+## 6. 回合与发球流程
 
 - `PongGame` 使用 `PlayerSide` 的语义保存 `serving_side`；开局为 Player 1。
 - 回合开始时，`PongPlayer.reset_for_round()` 根据自身阵营重置到对应半场中心；移动仍受各自半场边界限制。
@@ -116,7 +138,7 @@ Pong/
 - 合法挡板碰撞完成后，`Ball.paddle_contact(player_side, contact_position, surface_normal)` 上报触点与法线。
 - `PongGame` 收到触点信号后调用击球方的 `play_hit_feedback()`，并在 `Effects` 下创建 `HitEffect`，使用当前小球颜色沿法线播放粒子。
 
-## 6. 打击反馈与角色技能
+## 7. 打击反馈与角色技能
 
 - 打击反馈仅操作挡板的 `Visual` 偏移和独立粒子节点，不改变玩家位置、碰撞矩形或球速。
 - 挡板震动持续 `0.13s`、峰值约 `4px`，按 `42Hz` 生成逐渐衰减的二维位移。
@@ -124,11 +146,11 @@ Pong/
 - 白色角色配置为移速倍率 `2.0`、持续 `0.5s`、冷却 `1.5s`；红色角色无技能。
 - 技能只能在本方未持球且冷却结束后触发；触发时开始持续和冷却计时，不能叠加。
 - 技能期间移动速度按 `move_speed × 2.0` 计算；计时器按物理帧递减。
-- Player 1 的行动键为 `J`，Player 2 的行动键为小键盘 `1`。
+- 本地模式 Player 1 的行动键为 `J`、Player 2 为小键盘 `1`；联机对战双方均使用 `J`。
 - 加速移动时按约 `0.035s` 的间隔采样位置，生成同尺寸、同颜色的半透明残影；残影约 `0.22s` 渐隐。
 - 残影仅用于表现，不参与碰撞、球权或物理计算。
 
-## 7. 物理模型
+## 8. 物理模型
 
 - 球在俯视平面内运动，不施加重力。空气阻力系数为 `0.00009`，每帧施加二次空气阻力和 Magnus 加速度：`a_M = magnus_strength × (ω × v)`。
 - 角速度按 `spin_damping` 持续衰减，并限制在 ±35 rad/s；线速度限制在 1100 px/s。
@@ -141,12 +163,12 @@ Pong/
 - 每帧按球半径细分移动步长，高球速下仍逐段检测边界与挡板，避免穿透。
 - 物理参数均通过 `PongBall` 的导出属性配置，便于后续调校。
 
-## 8. 技术约束
+## 9. 技术约束
 
 - 使用 Godot 实现。
 - 使用 1800×720 的恒定逻辑分辨率和初始窗口尺寸，保持 5:2 画面比例。
 - 角色选项、挡板和小球保持原尺寸，不随界面放大而缩放。
-- 主场景为角色选择页，对战场景由选择页在按下空格后加载。
+- 主场景为模式选择页；本地模式由空格开始，联机模式由双方按 J 准备后开始。
 - 角色可定义外观、挡板尺寸和技能参数；未配置技能的红色角色保持基础移动行为并拥有加长挡板。
 - 背景、分界线、比分、玩家、小球、角色选项和选中标记必须是独立节点或场景，不能由单一节点统一绘制。
 - 打击反馈必须由独立粒子场景实现，且不得参与碰撞、球权或物理计算。
@@ -156,8 +178,11 @@ Pong/
 - `PongPlayer.setup()` 内部完成角色、阵营、边界和外观初始化；`PongBall.attach_to_player()` 从发球方取得附着位置。
 - 使用基础几何图形，不依赖外部美术素材。
 - 使用自定义确定性二维物理，不引入额外物理引擎插件。
+- 联机仅使用 Godot 内置 `ENetMultiplayerPeer` 和场景 RPC，不引入第三方网络库。
+- 联机对战必须由房主权威计算；加入者不得本地推进球或回合状态。
+- 联机输入和状态同步必须区分本侧控制、远端输入和快照应用，不能复用本地双人键盘轮询。
 
-## 9. 技术验收标准
+## 10. 技术验收标准
 
 - 逻辑分辨率与初始窗口为 1800×720，画面比例为 5:2。
 - 白色挡板保持原尺寸，红色挡板长度为白色两倍，角色选项和小球尺寸不变。
@@ -185,16 +210,22 @@ Pong/
 - 加速移动时能看到与挡板同形状、同颜色的渐隐幻影拖尾，静止时不生成重叠残影。
 - 红色挡板尺寸准确为 `18×160`，等于白色挡板 `18×80` 的两倍长度，且碰撞矩形同步变更。
 - 技能持续或冷却期间不能重复触发；持球时按键优先发球；红色角色不会触发加速。
+- 启动后首先显示“本地模式”“开创房间”“加入房间”，加入房间必须输入房主 IP。
+- 本地模式保持原双人键盘流程；联机房间达到两人后双方进入角色选择。
+- 联机角色选择双方均使用 WASD/J，双方准备后进入对战。
+- 联机对战双方均使用 WASD 移动、J 发球/技能；房主固定 Player 1，加入者固定 Player 2。
+- 加入者的输入能改变房主端 Player 2，房主快照能同步玩家、球、发球方和比分。
+- 断线后双方停止旧会话并返回模式选择页。
 - 节点职责、目录结构和引用关系符合本文档要求。
 
-## 10. Windows 单文件导出
+## 11. Windows 单文件导出
 
 - 使用 Godot 4.7.2 的 Windows Desktop、x86_64、Release 预设。
 - 开启 `binary_format/embed_pck`，关闭控制台包装，输出为 `build/windows/Pong.exe`。
 - 导出模板版本必须与编辑器一致；执行 `Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Desktop" "build/windows/Pong.exe"`。
 - `build/` 为本地构建产物，不提交到仓库。
 
-## 11. GitHub 发布
+## 12. GitHub 发布
 
 - `origin` 指向 `https://github.com/SKHUO/Pong`。
 - 后续提交身份统一为 `Pong Contributors <noreply@example.com>`，避免写入个人身份。

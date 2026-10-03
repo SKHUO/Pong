@@ -40,6 +40,12 @@ func add_point(player_side: int) -> void:
 	update_visuals()
 
 
+func set_scores(player1_score: int, player2_score: int) -> void:
+	_player1_score = maxi(player1_score, 0)
+	_player2_score = maxi(player2_score, 0)
+	update_visuals()
+
+
 func get_player1_score() -> int:
 	return _player1_score
 

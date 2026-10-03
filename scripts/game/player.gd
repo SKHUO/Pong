@@ -25,10 +25,38 @@ var _skill_time_remaining := 0.0
 var _skill_cooldown_remaining := 0.0
 var _hit_shake_time_remaining := 0.0
 var _hit_shake_phase := 0.0
+var _network_controlled := false
+var _network_has_target := false
+var _network_snap_pending := false
+var _network_target_position := Vector2.ZERO
+var _network_target_velocity := Vector2.ZERO
 
 
 func _ready() -> void:
 	update_visual()
+	set_process(false)
+
+
+func _process(delta: float) -> void:
+	if not _network_controlled or not _network_has_target:
+		return
+
+	if _network_snap_pending:
+		position = _network_target_position
+		_network_snap_pending = false
+	else:
+		position = position.lerp(_network_target_position, clampf(delta * 18.0, 0.0, 1.0))
+	velocity = _network_target_velocity
+
+	if is_instance_valid(skill_trail):
+		skill_trail.update_trail(
+			delta,
+			is_skill_active(),
+			global_position,
+			body_color,
+			paddle_size
+		)
+	_update_hit_shake(delta)
 
 
 func setup(character: CharacterDef, side: int) -> void:
@@ -50,8 +78,11 @@ func reset_for_round() -> void:
 
 
 func move(delta: float) -> void:
+	move_with_input(delta, get_move_direction())
+
+
+func move_with_input(delta: float, direction: Vector2) -> void:
 	var previous_position := position
-	var direction := get_move_direction()
 	if direction != Vector2.ZERO:
 		position += direction.normalized() * get_current_move_speed() * delta
 		clamp_to_playfield()
@@ -71,6 +102,37 @@ func move(delta: float) -> void:
 			paddle_size
 		)
 	_update_hit_shake(delta)
+
+
+func set_network_controlled(enabled: bool) -> void:
+	_network_controlled = enabled
+	_network_has_target = false
+	_network_snap_pending = false
+	set_process(enabled)
+
+
+func apply_network_state(state: Dictionary, snap: bool) -> void:
+	_network_target_position = state.get("position", position)
+	_network_target_velocity = state.get("velocity", Vector2.ZERO)
+	_skill_time_remaining = float(state.get("skill_time_remaining", 0.0))
+	_skill_cooldown_remaining = float(state.get("skill_cooldown_remaining", 0.0))
+	_hit_shake_time_remaining = float(state.get("hit_shake_time_remaining", 0.0))
+	_hit_shake_phase = float(state.get("hit_shake_phase", 0.0))
+	if snap or not _network_has_target:
+		position = _network_target_position
+		_network_snap_pending = true
+	_network_has_target = true
+
+
+func get_network_state() -> Dictionary:
+	return {
+		"position": position,
+		"velocity": velocity,
+		"skill_time_remaining": _skill_time_remaining,
+		"skill_cooldown_remaining": _skill_cooldown_remaining,
+		"hit_shake_time_remaining": _hit_shake_time_remaining,
+		"hit_shake_phase": _hit_shake_phase,
+	}
 
 
 func get_velocity() -> Vector2:

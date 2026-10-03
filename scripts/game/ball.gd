@@ -41,15 +41,70 @@ var playfield_size := PongField.SIZE
 var attached := true
 var last_hitter_side := PlayerSide.NONE
 var _double_hit_grace_remaining := 0.0
+var _network_controlled := false
+var _network_has_target := false
+var _network_snap_pending := false
+var _network_target_position := Vector2.ZERO
+var _network_target_rotation := 0.0
 
 
 func _ready() -> void:
 	update_visual()
+	set_process(false)
+
+
+func _process(delta: float) -> void:
+	if not _network_controlled or not _network_has_target:
+		return
+
+	if _network_snap_pending:
+		position = _network_target_position
+		rotation = _network_target_rotation
+		_network_snap_pending = false
+	else:
+		var blend := clampf(delta * 18.0, 0.0, 1.0)
+		position = position.lerp(_network_target_position, blend)
+		rotation = lerp_angle(rotation, _network_target_rotation, blend)
 
 
 func configure(world_size: Vector2) -> void:
 	playfield_size = world_size
 	update_visual()
+
+
+func set_network_controlled(enabled: bool) -> void:
+	_network_controlled = enabled
+	_network_has_target = false
+	_network_snap_pending = false
+	set_process(enabled)
+
+
+func apply_network_state(state: Dictionary, snap: bool) -> void:
+	attached = bool(state.get("attached", true))
+	last_hitter_side = int(state.get("last_hitter_side", PlayerSide.NONE))
+	velocity = state.get("velocity", Vector2.ZERO)
+	angular_velocity = float(state.get("angular_velocity", 0.0))
+	_double_hit_grace_remaining = float(state.get("double_hit_grace_remaining", 0.0))
+	_network_target_position = state.get("position", position)
+	_network_target_rotation = float(state.get("rotation", 0.0))
+	if snap or not _network_has_target:
+		position = _network_target_position
+		rotation = _network_target_rotation
+		_network_snap_pending = true
+	_network_has_target = true
+	update_visual()
+
+
+func get_network_state() -> Dictionary:
+	return {
+		"position": position,
+		"velocity": velocity,
+		"angular_velocity": angular_velocity,
+		"rotation": rotation,
+		"attached": attached,
+		"last_hitter_side": last_hitter_side,
+		"double_hit_grace_remaining": _double_hit_grace_remaining,
+	}
 
 
 func attach_to_player(player: PongPlayer) -> void:
